@@ -63,19 +63,19 @@ spec:
             periodSeconds: 10
 
         - name: chromadb
-          image: chromadb/chroma:0.5.23
+          image: image-registry.apps.2.rahti.csc.fi/evil-ai-chatbot/evil-ai-chromadb:latest
           ports:
             - containerPort: 8000
           env:
             - name: IS_PERSISTENT
               value: "TRUE"
             - name: PERSIST_DIRECTORY
-              value: "/chroma-data"
+              value: "/chroma/data"
             - name: ANONYMIZED_TELEMETRY
               value: "FALSE"
           volumeMounts:
             - name: chromadb-data
-              mountPath: /chroma-data
+              mountPath: /chroma
           livenessProbe:
             httpGet:
               path: /api/v1/heartbeat

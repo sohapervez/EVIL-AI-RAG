@@ -39,7 +39,9 @@ COPY api.py config.py ingest.py ./
 COPY chat-widget-wordpress/widget/ chat-widget-wordpress/widget/
 
 # Create data directories (will be overlaid by PVC mounts in production)
-RUN mkdir -p data/papers data && chmod -R 777 /app/data
+RUN mkdir -p /app/data/papers && \
+    chgrp -R 0 /app/data && \
+    chmod -R g=u /app/data
 
 EXPOSE 8080
 
