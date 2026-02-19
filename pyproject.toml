@@ -11,7 +11,7 @@ dependencies = [
     "langchain-anthropic>=0.2.0",
     "langchain-groq>=0.2.0",
     "langchain-experimental>=0.3.0",
-    "chromadb>=0.5.0",
+    "chromadb==0.5.23",
     "pymupdf>=1.24.0",
     "pymupdf4llm>=0.0.10",
     "rank-bm25>=0.2.2",
