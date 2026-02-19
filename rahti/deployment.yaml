@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: api
-          image: image-registry.openshift-image-registry.svc:5000/$(NAMESPACE)/evil-ai-rag-api:latest
+          image: image-registry.apps.2.rahti.csc.fi/evil-ai-chatbot/evil-ai-rag-api:latest
           ports:
             - containerPort: 8080
           envFrom:
@@ -63,9 +63,16 @@ spec:
             periodSeconds: 10
 
         - name: chromadb
-          image: chromadb/chroma:latest
+          image: chromadb/chroma:0.5.23
           ports:
             - containerPort: 8000
+          env:
+            - name: IS_PERSISTENT
+              value: "TRUE"
+            - name: PERSIST_DIRECTORY
+              value: "/chroma/chroma"
+            - name: ANONYMIZED_TELEMETRY
+              value: "FALSE"
           volumeMounts:
             - name: chromadb-data
               mountPath: /chroma/chroma
