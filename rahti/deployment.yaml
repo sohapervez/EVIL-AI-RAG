@@ -75,7 +75,7 @@ spec:
               value: "FALSE"
           volumeMounts:
             - name: chromadb-data
-              mountPath: /chroma
+              mountPath: /chroma/data
           livenessProbe:
             httpGet:
               path: /api/v1/heartbeat
