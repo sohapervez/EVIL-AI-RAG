@@ -39,9 +39,11 @@ COPY api.py config.py ingest.py ./
 COPY chat-widget-wordpress/widget/ chat-widget-wordpress/widget/
 
 # Create data directories (will be overlaid by PVC mounts in production)
-RUN mkdir -p /app/data/papers && \
-    chgrp -R 0 /app/data && \
-    chmod -R g=u /app/data
+# Set HOME=/app so ~/.cache is writable (OpenShift sets HOME=/ for random UIDs)
+ENV HOME=/app
+RUN mkdir -p /app/data/papers /app/.cache && \
+    chgrp -R 0 /app/data /app/.cache && \
+    chmod -R g=u /app/data /app/.cache
 
 EXPOSE 8080
 
