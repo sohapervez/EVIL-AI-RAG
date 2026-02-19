@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: evil-ai-rag
+  labels:
+    app: evil-ai-rag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: evil-ai-rag
+  template:
+    metadata:
+      labels:
+        app: evil-ai-rag
+    spec:
+      containers:
+        - name: api
+          image: image-registry.openshift-image-registry.svc:5000/$(NAMESPACE)/evil-ai-rag-api:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: evil-ai-rag-config
+            - secretRef:
+                name: evil-ai-rag-secrets
+          env:
+            - name: HF_HOME
+              value: /app/models
+            - name: CHROMA_HOST
+              value: localhost
+            - name: CHROMA_PORT
+              value: "8000"
+            - name: CHROMA_MODE
+              value: http
+          volumeMounts:
+            - name: papers
+              mountPath: /app/data/papers
+          resources:
+            requests:
+              memory: "1280Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2"
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 8080
+            failureThreshold: 30
+            periodSeconds: 10
+
+        - name: chromadb
+          image: chromadb/chroma:latest
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: chromadb-data
+              mountPath: /chroma/chroma
+          livenessProbe:
+            httpGet:
+              path: /api/v1/heartbeat
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/v1/heartbeat
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+      volumes:
+        - name: papers
+          persistentVolumeClaim:
+            claimName: evil-ai-papers-pvc
+        - name: chromadb-data
+          persistentVolumeClaim:
+            claimName: evil-ai-chromadb-pvc

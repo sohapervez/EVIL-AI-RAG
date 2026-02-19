@@ -10,8 +10,7 @@ from __future__ import annotations
 
 import argparse
 import logging
-import sys
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import chromadb
@@ -20,6 +19,7 @@ import config
 from core.chunker import chunk_elements
 from core.pdf_parser import parse_pdf
 from core.providers import get_embeddings
+from core.retriever import _get_chroma_client
 
 logging.basicConfig(
     level=logging.INFO,
@@ -92,8 +92,7 @@ def ingest_directory(
     """
     pdf_dir = Path(pdf_dir)
     if not pdf_dir.exists():
-        logger.error("Directory does not exist: %s", pdf_dir)
-        sys.exit(1)
+        raise FileNotFoundError(f"Directory does not exist: {pdf_dir}")
 
     pdf_files = sorted(pdf_dir.glob("*.pdf"))
     if not pdf_files:
@@ -103,7 +102,7 @@ def ingest_directory(
     logger.info("Found %d PDF file(s) in %s", len(pdf_files), pdf_dir)
 
     # ChromaDB client and collections
-    client = chromadb.PersistentClient(path=config.CHROMA_PERSIST_DIR)
+    client = _get_chroma_client()
 
     if clear:
         clear_collections(client)
@@ -263,6 +262,103 @@ def ingest_directory(
         summary["children"],
     )
     return summary
+
+
+def delete_paper_chunks(filename: str) -> dict:
+    """Remove all chunks for a specific PDF from both collections."""
+    client = _get_chroma_client()
+    child_col = client.get_or_create_collection(
+        name=config.CHROMA_CHILD_COLLECTION,
+        metadata={"hnsw:space": "cosine"},
+    )
+    parent_col = client.get_or_create_collection(name=config.CHROMA_PARENT_COLLECTION)
+
+    child_data = child_col.get(where={"source": filename}, include=["metadatas"])
+    child_ids = child_data["ids"]
+    parent_ids = list({m["parent_id"] for m in child_data["metadatas"] if "parent_id" in m})
+
+    if child_ids:
+        child_col.delete(ids=child_ids)
+    if parent_ids:
+        parent_col.delete(ids=parent_ids)
+
+    return {"deleted_children": len(child_ids), "deleted_parents": len(parent_ids)}
+
+
+def ingest_single_pdf(pdf_path: Path) -> dict:
+    """Save and ingest a single PDF file."""
+    pdf_path = Path(pdf_path)
+    if not pdf_path.exists():
+        raise FileNotFoundError(f"PDF not found: {pdf_path}")
+
+    client = _get_chroma_client()
+    child_col = client.get_or_create_collection(
+        name=config.CHROMA_CHILD_COLLECTION,
+        metadata={"hnsw:space": "cosine"},
+    )
+    parent_col = client.get_or_create_collection(name=config.CHROMA_PARENT_COLLECTION)
+
+    use_parent_child = config.USE_PARENT_CHILD_CHUNKING
+    result = _process_single_pdf(
+        pdf_path,
+        use_vision=None,
+        parent_chunk_size=None,
+        child_chunk_size=None,
+        child_chunk_overlap=None,
+        use_semantic=None,
+        use_parent_child=use_parent_child,
+    )
+
+    if result is None:
+        return {"files": 0, "parents": 0, "children": 0}
+
+    filename, parents, children = result
+    embeddings = get_embeddings()
+
+    if parents:
+        parent_col.upsert(
+            ids=[p.parent_id for p in parents],
+            documents=[p.content for p in parents],
+            metadatas=[
+                {
+                    "source": p.source,
+                    "page": p.page,
+                    "section": p.section,
+                    "content_type": p.content_type,
+                }
+                for p in parents
+            ],
+        )
+
+    if children:
+        batch_size = 200
+        child_texts = [c.content for c in children]
+        child_metas = [
+            {
+                "parent_id": c.parent_id,
+                "source": c.source,
+                "page": c.page,
+                "section": c.section,
+                "content_type": c.content_type,
+                "chunk_index": c.chunk_index,
+            }
+            for c in children
+        ]
+        child_ids = [c.child_id for c in children]
+
+        for i in range(0, len(children), batch_size):
+            batch_texts = child_texts[i : i + batch_size]
+            batch_ids = child_ids[i : i + batch_size]
+            batch_metas = child_metas[i : i + batch_size]
+            batch_embeddings = embeddings.embed_documents(batch_texts)
+            child_col.upsert(
+                ids=batch_ids,
+                embeddings=batch_embeddings,
+                documents=batch_texts,
+                metadatas=batch_metas,
+            )
+
+    return {"files": 1, "parents": len(parents), "children": len(children)}
 
 
 def main():

@@ -1,0 +1,17 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: evil-ai-rag
+  labels:
+    app: evil-ai-rag
+spec:
+  host: evil-ai-rag.rahtiapp.fi
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  to:
+    kind: Service
+    name: evil-ai-rag-api
+    weight: 100
+  port:
+    targetPort: 8080

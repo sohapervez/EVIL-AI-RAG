@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Generator, Optional
+from dataclasses import dataclass
+from typing import Generator
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 import config
 from core.providers import get_llm
@@ -22,14 +22,6 @@ logger = logging.getLogger(__name__)
 class ChatMessage:
     role: str  # "user" | "assistant"
     content: str
-
-
-@dataclass
-class RAGResponse:
-    """Holds the final answer and the sources used."""
-
-    answer: str
-    sources: list[RetrievedContext] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -52,61 +44,6 @@ def _format_history(history: list[ChatMessage], max_turns: int = 5) -> str:
         role = "User" if msg.role == "user" else "Assistant"
         lines.append(f"{role}: {msg.content}")
     return "\n".join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Non-streaming query
-# ---------------------------------------------------------------------------
-def query(
-    question: str,
-    history: list[ChatMessage] | None = None,
-    *,
-    llm_provider: str | None = None,
-    llm_model: str | None = None,
-    temperature: float = 0.3,
-    top_k: int | None = None,
-    use_hybrid: bool | None = None,
-    bm25_weight: float | None = None,
-    use_reranking: bool | None = None,
-    filter_source: str | None = None,
-    embedding_provider: str | None = None,
-    embedding_model: str | None = None,
-) -> RAGResponse:
-    """Run the full RAG pipeline: retrieve context, build prompt, generate answer."""
-    history = history or []
-
-    # Step 1: Retrieve
-    contexts = retrieve(
-        query=question,
-        top_k=top_k,
-        use_hybrid=use_hybrid,
-        bm25_weight=bm25_weight,
-        use_reranking=use_reranking,
-        filter_source=filter_source,
-        embedding_provider=embedding_provider,
-        embedding_model=embedding_model,
-    )
-
-    # Step 2: Build prompt
-    context_str = _format_context(contexts) if contexts else "No relevant context found."
-    history_str = _format_history(history) if history else "No prior conversation."
-
-    messages = [
-        SystemMessage(content=config.SYSTEM_PROMPT),
-        HumanMessage(
-            content=(
-                f"Context from research papers:\n{context_str}\n\n"
-                f"Conversation history:\n{history_str}\n\n"
-                f"Question: {question}"
-            )
-        ),
-    ]
-
-    # Step 3: Generate
-    llm = get_llm(provider=llm_provider, model=llm_model, temperature=temperature, streaming=False)
-    response = llm.invoke(messages)
-
-    return RAGResponse(answer=response.content, sources=contexts)
 
 
 # ---------------------------------------------------------------------------

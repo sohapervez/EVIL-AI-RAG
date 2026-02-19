@@ -69,10 +69,21 @@ CHROMA_COLLECTION: str = os.getenv("CHROMA_COLLECTION", "research_papers")
 CHROMA_CHILD_COLLECTION: str = f"{CHROMA_COLLECTION}_children"
 CHROMA_PARENT_COLLECTION: str = f"{CHROMA_COLLECTION}_parents"
 
+# ChromaDB connection mode (http for Rahti, persistent for local dev)
+CHROMA_HOST: str = os.getenv("CHROMA_HOST", "localhost")
+CHROMA_PORT: int = int(os.getenv("CHROMA_PORT", "8000"))
+CHROMA_MODE: str = os.getenv("CHROMA_MODE", "persistent")  # "http" or "persistent"
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 DATA_DIR: str = os.path.join(os.path.dirname(__file__), "data", "papers")
+
+# API authentication
+API_SECRET_KEY: str = os.getenv("API_SECRET_KEY", "")
+
+# Rate limiting
+RATE_LIMIT: str = os.getenv("RATE_LIMIT", "10/minute")
 
 # ---------------------------------------------------------------------------
 # Available models per provider (for UI dropdowns)

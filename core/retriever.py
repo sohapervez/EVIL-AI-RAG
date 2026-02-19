@@ -7,7 +7,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import chromadb
-from langchain_core.documents import Document
 
 import config
 from core.providers import get_embeddings
@@ -35,6 +34,8 @@ class RetrievedContext:
 # ChromaDB helpers
 # ---------------------------------------------------------------------------
 def _get_chroma_client() -> chromadb.ClientAPI:
+    if config.CHROMA_MODE == "http":
+        return chromadb.HttpClient(host=config.CHROMA_HOST, port=config.CHROMA_PORT)
     return chromadb.PersistentClient(path=config.CHROMA_PERSIST_DIR)
 
 

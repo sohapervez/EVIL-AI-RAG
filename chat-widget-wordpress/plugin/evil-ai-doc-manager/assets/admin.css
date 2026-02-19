@@ -1,0 +1,504 @@
+/**
+ * EVIL-AI Document Manager - Admin Styles
+ *
+ * @package Evil_AI_Doc_Manager
+ */
+
+/* ---------------------------------------------------------------------------
+ * General
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-wrap {
+    max-width: 1200px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Tab Navigation
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-tabs {
+    display: flex;
+    gap: 0;
+    margin: 20px 0 0;
+    border-bottom: 1px solid #c3c4c7;
+}
+
+.evil-ai-tab-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    text-decoration: none;
+    color: #50575e;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    border-bottom: none;
+    margin-bottom: -1px;
+    background: transparent;
+    border-radius: 3px 3px 0 0;
+    transition: color 0.15s, background 0.15s;
+}
+
+.evil-ai-tab-link:hover {
+    color: #135e96;
+    background: #f0f0f1;
+}
+
+.evil-ai-tab-link:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+.evil-ai-tab-link.active {
+    color: #1d2327;
+    background: #fff;
+    border-color: #c3c4c7;
+}
+
+.evil-ai-tab-link .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+}
+
+/* Tab content panels */
+.evil-ai-tab-content {
+    display: none;
+    padding: 20px 0;
+}
+
+.evil-ai-tab-content.active {
+    display: block;
+}
+
+/* ---------------------------------------------------------------------------
+ * Upload Section
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-upload-section {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.evil-ai-upload-section h2 {
+    margin-top: 0;
+    font-size: 15px;
+}
+
+.evil-ai-upload-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.evil-ai-upload-row input[type="file"] {
+    max-width: 400px;
+}
+
+.evil-ai-upload-row .button .dashicons {
+    margin-right: 4px;
+    vertical-align: text-top;
+}
+
+/* ---------------------------------------------------------------------------
+ * Actions Bar
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-actions-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.evil-ai-actions-bar .button .dashicons {
+    margin-right: 4px;
+    vertical-align: text-top;
+}
+
+/* ---------------------------------------------------------------------------
+ * Papers Table
+ * ----------------------------------------------------------------------- */
+
+#evil-ai-papers-table .column-number {
+    width: 50px;
+}
+
+#evil-ai-papers-table .column-title {
+    width: 30%;
+}
+
+#evil-ai-papers-table .column-filename {
+    width: 20%;
+}
+
+#evil-ai-papers-table .column-authors {
+    width: 30%;
+}
+
+#evil-ai-papers-table .column-actions {
+    width: 100px;
+    text-align: center;
+}
+
+.evil-ai-loading-row td {
+    text-align: center;
+    padding: 20px;
+    color: #646970;
+}
+
+.evil-ai-loading-row .spinner {
+    margin-right: 8px;
+}
+
+.evil-ai-empty-row td {
+    text-align: center;
+    padding: 20px;
+    color: #646970;
+    font-style: italic;
+}
+
+.evil-ai-delete-btn {
+    color: #b32d2e !important;
+    cursor: pointer;
+}
+
+.evil-ai-delete-btn:hover {
+    color: #a00 !important;
+    background: #fef1f1 !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * Notifications
+ * ----------------------------------------------------------------------- */
+
+#evil-ai-notifications {
+    margin-top: 10px;
+}
+
+.evil-ai-notice {
+    position: relative;
+    padding: 12px 16px;
+    margin: 10px 0;
+    border-left: 4px solid #72aee6;
+    background: #fff;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    border-radius: 2px;
+    animation: evilAiFadeIn 0.3s ease;
+}
+
+.evil-ai-notice.evil-ai-notice-success {
+    border-left-color: #00a32a;
+}
+
+.evil-ai-notice.evil-ai-notice-error {
+    border-left-color: #d63638;
+}
+
+.evil-ai-notice.evil-ai-notice-info {
+    border-left-color: #72aee6;
+}
+
+.evil-ai-notice.evil-ai-notice-warning {
+    border-left-color: #dba617;
+}
+
+.evil-ai-notice-dismiss {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #787c82;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px;
+}
+
+.evil-ai-notice-dismiss:hover {
+    color: #1d2327;
+}
+
+@keyframes evilAiFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * Spinner overrides
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-wrap .spinner {
+    float: none;
+    vertical-align: middle;
+    visibility: hidden;
+}
+
+.evil-ai-wrap .spinner.is-active {
+    visibility: visible;
+}
+
+/* ---------------------------------------------------------------------------
+ * Analytics: Summary Cards
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-summary-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.evil-ai-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 18px 20px;
+}
+
+.evil-ai-card-icon {
+    font-size: 32px;
+    width: 32px;
+    height: 32px;
+    color: #2271b1;
+    flex-shrink: 0;
+}
+
+.evil-ai-card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.evil-ai-card-value {
+    font-size: 24px;
+    font-weight: 600;
+    color: #1d2327;
+    line-height: 1.2;
+}
+
+.evil-ai-card-label {
+    font-size: 13px;
+    color: #646970;
+    margin-top: 2px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Analytics: Controls
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-analytics-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.evil-ai-analytics-controls label {
+    font-weight: 600;
+}
+
+.evil-ai-analytics-controls select {
+    max-width: 200px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Analytics: Bar Charts (CSS only)
+ * ----------------------------------------------------------------------- */
+
+.evil-ai-analytics-section {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.evil-ai-analytics-section h3 {
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+.evil-ai-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.evil-ai-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.evil-ai-bar-label {
+    width: 220px;
+    min-width: 120px;
+    font-size: 13px;
+    color: #1d2327;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.evil-ai-bar-track {
+    flex: 1;
+    height: 22px;
+    background: #f0f0f1;
+    border-radius: 3px;
+    position: relative;
+    overflow: hidden;
+}
+
+.evil-ai-bar-fill {
+    height: 100%;
+    background: #2271b1;
+    border-radius: 3px;
+    transition: width 0.4s ease;
+    min-width: 2px;
+}
+
+.evil-ai-bar-value {
+    width: 50px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #1d2327;
+    flex-shrink: 0;
+}
+
+/* Questions per day variation */
+.evil-ai-bar-chart-daily .evil-ai-bar-label {
+    width: 100px;
+}
+
+.evil-ai-bar-chart-daily .evil-ai-bar-fill {
+    background: #135e96;
+}
+
+/* Placeholder text */
+.evil-ai-placeholder {
+    color: #646970;
+    font-style: italic;
+    padding: 10px 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * Analytics: Recent Questions Table
+ * ----------------------------------------------------------------------- */
+
+#evil-ai-recent-questions-table .column-timestamp {
+    width: 160px;
+}
+
+#evil-ai-recent-questions-table .column-question {
+    width: auto;
+}
+
+#evil-ai-recent-questions-table .column-papers-cited {
+    width: 200px;
+}
+
+#evil-ai-recent-questions-table .column-latency {
+    width: 100px;
+    text-align: right;
+}
+
+/* ---------------------------------------------------------------------------
+ * Settings: Test Connection
+ * ----------------------------------------------------------------------- */
+
+#evil-ai-test-result {
+    margin-top: 12px;
+}
+
+#evil-ai-test-result .evil-ai-test-success {
+    color: #00a32a;
+    font-weight: 600;
+}
+
+#evil-ai-test-result .evil-ai-test-error {
+    color: #d63638;
+    font-weight: 600;
+}
+
+#evil-ai-test-result pre {
+    background: #f6f7f7;
+    padding: 12px;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    max-width: 600px;
+    overflow-x: auto;
+    font-size: 13px;
+    margin-top: 8px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Responsive
+ * ----------------------------------------------------------------------- */
+
+@media screen and (max-width: 960px) {
+    .evil-ai-summary-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .evil-ai-bar-label {
+        width: 140px;
+        min-width: 80px;
+    }
+}
+
+@media screen and (max-width: 600px) {
+    .evil-ai-summary-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .evil-ai-tabs {
+        flex-direction: column;
+    }
+
+    .evil-ai-tab-link {
+        border-radius: 0;
+    }
+
+    .evil-ai-upload-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .evil-ai-bar-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .evil-ai-bar-label {
+        width: 100%;
+        text-align: left;
+    }
+
+    .evil-ai-bar-track {
+        width: 100%;
+    }
+
+    #evil-ai-papers-table .column-authors {
+        display: none;
+    }
+}

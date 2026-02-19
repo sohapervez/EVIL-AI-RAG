@@ -1,0 +1,28 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - CHROMA_MODE=http
+    env_file:
+      - path: .env
+        required: false
+      - path: .env.local
+        required: false
+    volumes:
+      - ./data/papers:/app/data/papers
+    depends_on:
+      - chromadb
+
+  chromadb:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/chroma
+
+volumes:
+  chromadb_data:
