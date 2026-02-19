@@ -3,15 +3,39 @@
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Optional
 
 import chromadb
 
 import config
-from core.providers import get_embeddings
+from core.providers import get_embedding_model
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Improved tokenization for BM25
+# ---------------------------------------------------------------------------
+STOPWORDS = {
+    "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
+    "have", "has", "had", "do", "does", "did", "will", "would", "could",
+    "should", "may", "might", "shall", "can", "need", "dare", "ought",
+    "used", "to", "of", "in", "for", "on", "with", "at", "by", "from",
+    "as", "into", "through", "during", "before", "after", "above", "below",
+    "between", "out", "off", "over", "under", "again", "further", "then",
+    "once", "here", "there", "when", "where", "why", "how", "all", "both",
+    "each", "few", "more", "most", "other", "some", "such", "no", "nor",
+    "not", "only", "own", "same", "so", "than", "too", "very", "just",
+    "because", "but", "and", "or", "if", "while", "that", "this", "it",
+}
+
+
+def _tokenize(text: str) -> list[str]:
+    """Improved tokenization with stopword removal and basic stemming."""
+    tokens = re.findall(r'\b[a-z]{2,}\b', text.lower())
+    return [t for t in tokens if t not in STOPWORDS]
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +75,7 @@ def _get_parent_collection(client: chromadb.ClientAPI):
 
 
 # ---------------------------------------------------------------------------
-# BM25 search
+# BM25 search (with improved tokenization)
 # ---------------------------------------------------------------------------
 def _bm25_search(
     query: str,
@@ -67,16 +91,17 @@ def _bm25_search(
         all_children = child_collection.get(where=where_filter, include=["documents", "metadatas"])
     else:
         all_children = child_collection.get(include=["documents", "metadatas"])
-    
+
     if not all_children["documents"]:
         return []
 
     ids = all_children["ids"]
     docs = all_children["documents"]
 
-    tokenised = [doc.lower().split() for doc in docs]
+    # Use improved tokenization with stopword removal
+    tokenised = [_tokenize(doc) for doc in docs]
     bm25 = BM25Okapi(tokenised)
-    query_tokens = query.lower().split()
+    query_tokens = _tokenize(query)
     scores = bm25.get_scores(query_tokens)
 
     # Pair ids with scores and sort
@@ -150,14 +175,14 @@ def retrieve(
 
     # Check that we have data
     if child_col.count() == 0:
-        logger.warning("Child collection is empty — no documents indexed.")
+        logger.warning("Child collection is empty -- no documents indexed.")
         return []
 
     candidate_n = top_k * 3  # over-fetch for re-ranking
 
     # ----- Stage A: Vector search on children -----
-    embeddings = get_embeddings(embedding_provider, embedding_model)
-    query_embedding = embeddings.embed_query(query)
+    embed_model = get_embedding_model(embedding_provider, embedding_model)
+    query_embedding = embed_model.get_query_embedding(query)
 
     where_filter = None
     if filter_source:

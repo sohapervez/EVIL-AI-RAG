@@ -34,8 +34,8 @@ def clear_collections(client: chromadb.ClientAPI) -> None:
         try:
             client.delete_collection(name)
             logger.info("Deleted collection: %s", name)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Could not delete collection %s: %s", name, e)
 
 
 def _process_single_pdf(
@@ -126,8 +126,8 @@ def ingest_directory(
     try:
         existing_meta = child_col.get(include=["metadatas"])
         existing_sources = {m.get("source", "") for m in existing_meta["metadatas"]}
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Could not retrieve existing sources from ChromaDB: %s", e)
 
     # Filter out already-indexed files
     pdfs_to_process = [

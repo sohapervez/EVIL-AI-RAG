@@ -23,17 +23,28 @@ class AnalyticsLogger:
         self._db_path = str(db_path or _DB_PATH)
         # Ensure parent directory exists
         Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self._db_path, check_same_thread=False)
-        self._conn.execute("PRAGMA journal_mode=WAL")
         self._lock = threading.Lock()
-        self._conn.row_factory = sqlite3.Row
+        self._local = threading.local()
         self._create_table()
+
+    # ------------------------------------------------------------------
+    # Thread-local connection
+    # ------------------------------------------------------------------
+    def _get_conn(self) -> sqlite3.Connection:
+        """Return a thread-local SQLite connection."""
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(self._db_path, check_same_thread=False)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.row_factory = sqlite3.Row
+            self._local.conn = conn
+        return conn
 
     # ------------------------------------------------------------------
     # Schema
     # ------------------------------------------------------------------
     def _create_table(self) -> None:
-        self._conn.execute(
+        self._get_conn().execute(
             """
             CREATE TABLE IF NOT EXISTS chat_logs (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -51,7 +62,7 @@ class AnalyticsLogger:
             )
             """
         )
-        self._conn.commit()
+        self._get_conn().commit()
 
     # ------------------------------------------------------------------
     # Write
@@ -73,7 +84,7 @@ class AnalyticsLogger:
         """Insert a single chat event."""
         try:
             with self._lock:
-                self._conn.execute(
+                self._get_conn().execute(
                     """
                     INSERT INTO chat_logs
                         (timestamp, session_id, question, answer_preview,
@@ -95,7 +106,7 @@ class AnalyticsLogger:
                         ip_hash,
                     ),
                 )
-                self._conn.commit()
+                self._get_conn().commit()
         except Exception as exc:
             logger.warning("Failed to log chat event: %s", exc)
 
@@ -107,26 +118,26 @@ class AnalyticsLogger:
         cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
         with self._lock:
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 "SELECT COUNT(*) AS cnt FROM chat_logs WHERE timestamp >= ?",
                 (cutoff,),
             )
             total_questions = cur.fetchone()["cnt"]
 
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 "SELECT COUNT(DISTINCT session_id) AS cnt FROM chat_logs WHERE timestamp >= ?",
                 (cutoff,),
             )
             unique_sessions = cur.fetchone()["cnt"]
 
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 "SELECT AVG(latency_ms) AS avg_lat FROM chat_logs WHERE timestamp >= ? AND latency_ms > 0",
                 (cutoff,),
             )
             row = cur.fetchone()
             avg_latency_ms = round(row["avg_lat"]) if row["avg_lat"] is not None else 0
 
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 "SELECT COUNT(*) AS cnt FROM chat_logs WHERE timestamp >= ? AND error != ''",
                 (cutoff,),
             )
@@ -134,7 +145,7 @@ class AnalyticsLogger:
             error_rate = round(error_count / max(total_questions, 1), 4)
 
             # Top papers cited
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 "SELECT papers_cited FROM chat_logs WHERE timestamp >= ? AND papers_cited != '[]'",
                 (cutoff,),
             )
@@ -152,7 +163,7 @@ class AnalyticsLogger:
             )[:10]
 
             # Questions per day
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 """
                 SELECT DATE(timestamp) AS day, COUNT(*) AS cnt
                 FROM chat_logs
@@ -165,7 +176,7 @@ class AnalyticsLogger:
             questions_per_day = [{"date": r["day"], "count": r["cnt"]} for r in cur.fetchall()]
 
             # Recent questions
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 """
                 SELECT question, timestamp, session_id, latency_ms, error
                 FROM chat_logs
@@ -193,10 +204,10 @@ class AnalyticsLogger:
         offset = (max(page, 1) - 1) * per_page
 
         with self._lock:
-            cur = self._conn.execute("SELECT COUNT(*) AS cnt FROM chat_logs")
+            cur = self._get_conn().execute("SELECT COUNT(*) AS cnt FROM chat_logs")
             total = cur.fetchone()["cnt"]
 
-            cur = self._conn.execute(
+            cur = self._get_conn().execute(
                 """
                 SELECT * FROM chat_logs
                 ORDER BY id DESC
@@ -219,7 +230,7 @@ class AnalyticsLogger:
     def export_csv(self) -> str:
         """Return all logs as a CSV string."""
         with self._lock:
-            cur = self._conn.execute("SELECT * FROM chat_logs ORDER BY id")
+            cur = self._get_conn().execute("SELECT * FROM chat_logs ORDER BY id")
             rows = cur.fetchall()
         if not rows:
             return ""

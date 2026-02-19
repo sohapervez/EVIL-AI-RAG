@@ -26,7 +26,7 @@ import os
 import time
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -34,6 +34,7 @@ from pydantic import BaseModel
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 import config
 from core.analytics import AnalyticsLogger
@@ -48,6 +49,8 @@ from core.rag_chain import ChatMessage, query_stream
 from ingest import clear_collections, delete_paper_chunks, ingest_directory, ingest_single_pdf
 
 logger = logging.getLogger(__name__)
+
+_last_reindex_time = 0.0
 
 # ---------------------------------------------------------------------------
 # FastAPI app
@@ -69,22 +72,33 @@ async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
 # ---------------------------------------------------------------------------
 # CORS
 # ---------------------------------------------------------------------------
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://evil-ai.eu,https://www.evil-ai.eu,http://localhost:3000,http://localhost:8501",
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://evil-ai.eu",
-        "https://www.evil-ai.eu",
-        "https://evil-ai-rag.rahtiapp.fi",
-        "http://localhost",
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:8080",
-        "http://localhost:8501",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
     allow_methods=["*"],
     allow_headers=["Content-Type", "Authorization"],
     allow_credentials=True,
 )
+
+
+# ---------------------------------------------------------------------------
+# Security headers
+# ---------------------------------------------------------------------------
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ---------------------------------------------------------------------------
 # Static files
@@ -208,7 +222,15 @@ FAILURE CONDITION:
 
 @app.get("/api/v1/health")
 async def health():
-    return {"status": "ok"}
+    status = {"api": "healthy"}
+    try:
+        from core.retriever import _get_chroma_client
+        client = _get_chroma_client()
+        client.list_collections()
+        status["chromadb"] = "healthy"
+    except Exception:
+        status["chromadb"] = "unhealthy"
+    return status
 
 
 # ---------------------------------------------------------------------------
@@ -229,6 +251,11 @@ async def list_papers():
 @app.post("/api/v1/chat")
 @limiter.limit(config.RATE_LIMIT)
 async def chat(body: ChatRequest, request: Request):
+    if len(body.question) > 10000:
+        raise HTTPException(400, "Question too long (max 10000 characters)")
+    if len(body.history) > 50:
+        raise HTTPException(400, "History too long (max 50 messages)")
+
     start = time.time()
     ip_raw = get_remote_address(request) or ""
     ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest()[:16]
@@ -390,6 +417,12 @@ async def remove_paper(filename: str):
 
 @app.post("/api/v1/reindex", dependencies=[Depends(verify_token)])
 async def reindex():
+    global _last_reindex_time
+    now = time.time()
+    if now - _last_reindex_time < 300:
+        raise HTTPException(429, "Reindexing too frequent. Wait 5 minutes between reindex requests.")
+    _last_reindex_time = now
+
     from core.retriever import _get_chroma_client
 
     client = _get_chroma_client()
@@ -404,12 +437,12 @@ async def reindex():
 
 
 @app.get("/api/v1/analytics", dependencies=[Depends(verify_token)])
-async def analytics_summary(days: int = 30):
+async def analytics_summary(days: int = Query(30, ge=1, le=365)):
     return analytics.get_summary(days=days)
 
 
 @app.get("/api/v1/analytics/questions", dependencies=[Depends(verify_token)])
-async def analytics_questions(page: int = 1, per_page: int = 20):
+async def analytics_questions(page: int = Query(1, ge=1), per_page: int = Query(20, ge=1, le=100)):
     return analytics.get_questions(page=page, per_page=per_page)
 
 

@@ -39,10 +39,10 @@ spec:
               mountPath: /app/data/papers
           resources:
             requests:
-              memory: "1280Mi"
+              memory: "2Gi"
               cpu: "500m"
             limits:
-              memory: "2Gi"
+              memory: "3Gi"
               cpu: "2"
           livenessProbe:
             httpGet:
@@ -85,10 +85,10 @@ spec:
             periodSeconds: 10
           resources:
             requests:
-              memory: "256Mi"
+              memory: "512Mi"
               cpu: "250m"
             limits:
-              memory: "512Mi"
+              memory: "1Gi"
               cpu: "500m"
 
       volumes:

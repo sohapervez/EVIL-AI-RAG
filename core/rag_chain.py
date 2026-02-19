@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Generator
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from llama_index.core.llms import ChatMessage as LlamaChatMessage, MessageRole
 
 import config
 from core.providers import get_llm
@@ -97,25 +97,28 @@ def query_stream(
     history_str = _format_history(history) if history else "No prior conversation."
 
     messages = [
-        SystemMessage(content=system_prompt or config.SYSTEM_PROMPT),
-        HumanMessage(
+        LlamaChatMessage(
+            role=MessageRole.SYSTEM,
+            content=system_prompt or config.SYSTEM_PROMPT,
+        ),
+        LlamaChatMessage(
+            role=MessageRole.USER,
             content=(
                 f"Context from research papers:\n{context_str}\n\n"
                 f"Conversation history:\n{history_str}\n\n"
                 f"Question: {question}"
-            )
+            ),
         ),
     ]
 
-    # Step 3: Stream
-    llm_kwargs = {}
-    if max_tokens is not None:
-        llm_kwargs["max_tokens"] = max_tokens
-    llm = get_llm(provider=llm_provider, model=llm_model, temperature=temperature, streaming=True, **llm_kwargs)
+    # Step 3: Stream using LlamaIndex LLM
+    llm = get_llm(provider=llm_provider, model=llm_model, temperature=temperature)
 
     def _token_generator() -> Generator[str, None, None]:
-        for chunk in llm.stream(messages):
-            if chunk.content:
-                yield chunk.content
+        response = llm.stream_chat(messages)
+        for chunk in response:
+            token = chunk.delta
+            if token:
+                yield token
 
     return _token_generator(), contexts

@@ -13,7 +13,7 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+from llama_index.core.node_parser import SentenceSplitter
 
 import config
 from core.pdf_parser import ParsedElement
@@ -77,7 +77,7 @@ def _make_id(prefix: str, source: str, page: int, section: str, idx: int, conten
     """Create a deterministic ID for deduplication on re-ingestion.
 
     Includes a hash of the actual content to avoid collisions when
-    structural metadata (source/page/section/idx) is identical —
+    structural metadata (source/page/section/idx) is identical ---
     e.g. repeated section headers from PDF headers/footers.
     """
     raw = f"{prefix}:{source}:{page}:{section}:{idx}:{content}"
@@ -123,16 +123,32 @@ def _should_exclude_section(section_name: str) -> bool:
 # Semantic chunking helper (optional, uses embeddings)
 # ---------------------------------------------------------------------------
 def _get_semantic_splitter():
-    """Lazy-build a SemanticChunker. Requires embedding model to be available."""
-    from langchain_experimental.text_splitters import SemanticChunker
+    """Lazy-build a SemanticSplitterNodeParser using the configured embedding model.
 
-    from core.providers import get_embeddings
+    Falls back gracefully if the LlamaIndex semantic splitter is unavailable.
+    """
+    from llama_index.core.node_parser import SemanticSplitterNodeParser
 
-    embeddings = get_embeddings(config.EMBEDDING_PROVIDER, config.EMBEDDING_MODEL)
-    return SemanticChunker(
-        embeddings=embeddings,
-        breakpoint_threshold_type="percentile",
+    from core.providers import get_embedding_model
+
+    embed_model = get_embedding_model(config.EMBEDDING_PROVIDER, config.EMBEDDING_MODEL)
+    return SemanticSplitterNodeParser(
+        embed_model=embed_model,
+        breakpoint_percentile_threshold=95,
     )
+
+
+def _semantic_split_text(semantic_splitter, text: str) -> list[str]:
+    """Use the semantic splitter to split raw text.
+
+    The SemanticSplitterNodeParser works on Document objects, so we wrap
+    the text in a Document, split, and extract the text back out.
+    """
+    from llama_index.core.schema import Document
+
+    doc = Document(text=text)
+    nodes = semantic_splitter.get_nodes_from_documents([doc])
+    return [node.get_content() for node in nodes]
 
 
 # ---------------------------------------------------------------------------
@@ -154,11 +170,11 @@ def chunk_elements(
     Returns (parent_chunks, child_chunks).
     """
     use_parent_child = use_parent_child if use_parent_child is not None else config.USE_PARENT_CHILD_CHUNKING
-    
+
     # If simple chunking, use that instead
     if not use_parent_child:
         return _chunk_elements_simple(elements, parent_chunk_size, child_chunk_size, child_chunk_overlap, use_semantic)
-    
+
     parent_chunk_size = parent_chunk_size or config.PARENT_CHUNK_SIZE
     child_chunk_size = child_chunk_size or config.CHILD_CHUNK_SIZE
     child_chunk_overlap = child_chunk_overlap or config.CHILD_CHUNK_OVERLAP
@@ -167,23 +183,21 @@ def chunk_elements(
     parents: list[ParentChunk] = []
     children: list[ChildChunk] = []
 
-    # Splitters
-    parent_splitter = RecursiveCharacterTextSplitter(
+    # Splitters (LlamaIndex SentenceSplitter replaces LangChain RecursiveCharacterTextSplitter)
+    parent_splitter = SentenceSplitter(
         chunk_size=parent_chunk_size,
         chunk_overlap=0,
-        separators=["\n\n", "\n", ". ", "; ", ", ", " "],
     )
-    child_splitter = RecursiveCharacterTextSplitter(
+    child_splitter = SentenceSplitter(
         chunk_size=child_chunk_size,
         chunk_overlap=child_chunk_overlap,
-        separators=["\n\n", "\n", ". ", "; ", ", ", " "],
     )
     semantic_splitter = None
     if use_semantic:
         try:
             semantic_splitter = _get_semantic_splitter()
         except Exception as e:
-            logger.warning("Semantic chunker unavailable, falling back to recursive: %s", e)
+            logger.warning("Semantic chunker unavailable, falling back to sentence splitter: %s", e)
 
     child_index = 0  # global child counter for ordering
 
@@ -248,7 +262,7 @@ def chunk_elements(
                 # Stage 3: split parent into child chunks
                 if semantic_splitter is not None:
                     try:
-                        child_texts = semantic_splitter.split_text(p_text)
+                        child_texts = _semantic_split_text(semantic_splitter, p_text)
                     except Exception:
                         child_texts = child_splitter.split_text(p_text)
                 else:
@@ -287,7 +301,7 @@ def _chunk_elements_simple(
     child_chunk_size: Optional[int] = None,  # Used as chunk_size if provided
 ) -> tuple[list[ParentChunk], list[ChildChunk]]:
     """Simple single-level chunking: creates fewer chunks for faster embedding.
-    
+
     Creates chunks directly from sections without parent-child hierarchy.
     Each chunk is both a parent and child (for API compatibility).
     """
@@ -298,18 +312,17 @@ def _chunk_elements_simple(
     parents: list[ParentChunk] = []
     children: list[ChildChunk] = []
 
-    # Single splitter for simple chunking
-    splitter = RecursiveCharacterTextSplitter(
+    # Single splitter for simple chunking (LlamaIndex SentenceSplitter)
+    splitter = SentenceSplitter(
         chunk_size=chunk_size,
         chunk_overlap=chunk_overlap,
-        separators=["\n\n", "\n", ". ", "; ", ", ", " "],
     )
     semantic_splitter = None
     if use_semantic:
         try:
             semantic_splitter = _get_semantic_splitter()
         except Exception as e:
-            logger.warning("Semantic chunker unavailable, falling back to recursive: %s", e)
+            logger.warning("Semantic chunker unavailable, falling back to sentence splitter: %s", e)
 
     chunk_index = 0
 
@@ -322,7 +335,7 @@ def _chunk_elements_simple(
         if content_type in ("table", "image_ocr", "image_description"):
             pid = _make_id("parent", source, page, content_type, chunk_index, element.content)
             cid = _make_id("child", source, page, content_type, chunk_index, element.content)
-            
+
             parent = ParentChunk(
                 parent_id=pid,
                 content=element.content,
@@ -360,7 +373,7 @@ def _chunk_elements_simple(
             # Split section into chunks
             if semantic_splitter is not None:
                 try:
-                    chunk_texts = semantic_splitter.split_text(section_text)
+                    chunk_texts = _semantic_split_text(semantic_splitter, section_text)
                 except Exception:
                     chunk_texts = splitter.split_text(section_text)
             else:
@@ -369,7 +382,7 @@ def _chunk_elements_simple(
             for c_idx, c_text in enumerate(chunk_texts):
                 pid = _make_id("parent", source, page, section_name, chunk_index, c_text)
                 cid = _make_id("child", source, page, section_name, chunk_index, c_text)
-                
+
                 parent = ParentChunk(
                     parent_id=pid,
                     content=c_text,
