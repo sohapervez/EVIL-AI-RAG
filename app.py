@@ -5,7 +5,7 @@ based on research papers (PDFs) stored in ``data/papers/``.
 The user drives the conversation — no follow-up questions are asked.
 
 Usage:
-    streamlit run app1.py
+    streamlit run app.py
 """
 
 # --- 1. Setup & Imports ---

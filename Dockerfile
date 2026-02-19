@@ -14,8 +14,8 @@ RUN pip install --no-cache-dir .
 ENV HF_HOME=/app/models
 RUN python -c "\
 from sentence_transformers import CrossEncoder; \
-from langchain_community.embeddings import HuggingFaceEmbeddings; \
-HuggingFaceEmbeddings(model_name='BAAI/bge-base-en-v1.5'); \
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding; \
+HuggingFaceEmbedding(model_name='BAAI/bge-base-en-v1.5'); \
 CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2'); \
 print('Models cached.') \
 "
@@ -42,9 +42,11 @@ COPY chat-widget-wordpress/widget/ chat-widget-wordpress/widget/
 # Set HOME=/app so ~/.cache is writable (OpenShift sets HOME=/ for random UIDs)
 ENV HOME=/app
 RUN mkdir -p /app/data/papers /app/.cache && \
-    chgrp -R 0 /app/data /app/.cache && \
-    chmod -R g=u /app/data /app/.cache
+    chgrp -R 0 /app /app/data /app/.cache && \
+    chmod -R g=u /app /app/data /app/.cache
+
+USER 1001
 
 EXPOSE 8080
 
-CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+CMD ["uvicorn", "api:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "300"]

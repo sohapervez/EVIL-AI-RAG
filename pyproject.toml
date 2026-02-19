@@ -1,30 +1,30 @@
 [project]
 name = "research-paper-rag"
 version = "0.1.0"
-description = "End-to-end RAG system for research papers with multimodal PDF parsing, parent-child chunking, hybrid retrieval, and Streamlit chatbot."
+description = "RAG system for research papers with PDF parsing, parent-child chunking, hybrid retrieval, and LlamaIndex."
 requires-python = ">=3.11"
 dependencies = [
-    "llama-index-core>=0.12.0",
-    "llama-index-llms-openai>=0.4.0",
-    "llama-index-llms-anthropic>=0.6.0",
-    "llama-index-llms-ollama>=0.5.0",
-    "llama-index-llms-groq>=0.3.0",
-    "llama-index-embeddings-huggingface>=0.5.0",
-    "llama-index-embeddings-openai>=0.3.0",
-    "llama-index-embeddings-ollama>=0.5.0",
-    "llama-index-vector-stores-chroma>=0.4.0",
-    "llama-index-readers-file>=0.4.0",
-    "chromadb>=1.5.0",
-    "pymupdf>=1.25.0",
-    "pymupdf4llm>=0.3.0",
-    "rank-bm25>=0.2.2",
-    "sentence-transformers>=5.0.0",
-    "python-dotenv>=1.0.0",
-    "pandas>=2.2.0",
-    "fastapi>=0.125.0",
-    "uvicorn[standard]>=0.40.0",
-    "python-multipart>=0.0.18",
-    "slowapi>=0.1.9",
+    "llama-index-core>=0.12.0,<1.0",
+    "llama-index-llms-openai>=0.4.0,<1.0",
+    "llama-index-llms-anthropic>=0.6.0,<1.0",
+    "llama-index-llms-ollama>=0.5.0,<1.0",
+    "llama-index-llms-groq>=0.3.0,<1.0",
+    "llama-index-embeddings-huggingface>=0.5.0,<1.0",
+    "llama-index-embeddings-openai>=0.3.0,<1.0",
+    "llama-index-embeddings-ollama>=0.5.0,<1.0",
+    "llama-index-vector-stores-chroma>=0.4.0,<1.0",
+    "llama-index-readers-file>=0.4.0,<1.0",
+    "chromadb>=1.5.0,<2.0",
+    "pymupdf>=1.25.0,<2.0",
+    "pymupdf4llm>=0.3.0,<1.0",
+    "rank-bm25>=0.2.2,<1.0",
+    "sentence-transformers>=5.0.0,<6.0",
+    "python-dotenv>=1.0.0,<2.0",
+    "pandas>=2.2.0,<3.0",
+    "fastapi>=0.125.0,<1.0",
+    "uvicorn[standard]>=0.40.0,<1.0",
+    "python-multipart>=0.0.18,<1.0",
+    "slowapi>=0.1.9,<1.0",
 ]
 
 [project.optional-dependencies]

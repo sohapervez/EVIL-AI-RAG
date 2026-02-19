@@ -4,9 +4,7 @@ __pycache__/
 *.pyc
 .env.local
 .env
-plan.md
 app.py
-app1.py
 data/papers/
 data/analytics/
 vectorstore/

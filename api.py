@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import json
 import logging
 import os
@@ -48,6 +49,10 @@ from core.paper_metadata import (
 from core.rag_chain import ChatMessage, query_stream
 from ingest import clear_collections, delete_paper_chunks, ingest_directory, ingest_single_pdf
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 _last_reindex_time = 0.0
@@ -80,7 +85,7 @@ ALLOWED_ORIGINS = os.getenv(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization"],
     allow_credentials=True,
 )
@@ -120,7 +125,8 @@ analytics = AnalyticsLogger()
 def verify_token(authorization: str = Header(...)):
     if not config.API_SECRET_KEY:
         raise HTTPException(503, "API key not configured")
-    if authorization != f"Bearer {config.API_SECRET_KEY}":
+    expected = f"Bearer {config.API_SECRET_KEY}"
+    if not hmac.compare_digest(authorization.encode(), expected.encode()):
         raise HTTPException(401, "Invalid API key")
 
 
@@ -141,7 +147,7 @@ class ChatRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# System prompt builder (mirrors app1.py logic)
+# System prompt builder
 # ---------------------------------------------------------------------------
 
 
@@ -260,7 +266,7 @@ async def chat(body: ChatRequest, request: Request):
     ip_raw = get_remote_address(request) or ""
     ip_hash = hashlib.sha256(ip_raw.encode()).hexdigest()[:16]
 
-    # Paper-aware query enhancement (mirrors app1.py lines 762-812)
+    # Paper-aware query enhancement
     paper_info = extract_paper_titles()
     system_prompt = _build_system_prompt(paper_info)
 
@@ -331,7 +337,8 @@ async def chat(body: ChatRequest, request: Request):
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         except Exception as exc:
             error_text = str(exc)
-            yield f"data: {json.dumps({'type': 'error', 'message': error_text})}\n\n"
+            logger.exception("Streaming error: %s", error_text)
+            yield f"data: {json.dumps({'type': 'error', 'message': 'An internal error occurred'})}\n\n"
         finally:
             # Log analytics
             answer_text = "".join(full_answer)
@@ -396,6 +403,8 @@ async def remove_paper(filename: str):
     safe_name = os.path.basename(filename)
     if not safe_name or safe_name != filename:
         raise HTTPException(400, "Invalid filename")
+    if not safe_name.lower().endswith(".pdf"):
+        raise HTTPException(400, "Only PDF files can be deleted")
     pdf_path = Path(config.DATA_DIR) / safe_name
     if not pdf_path.resolve().is_relative_to(Path(config.DATA_DIR).resolve()):
         raise HTTPException(400, "Invalid filename")

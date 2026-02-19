@@ -86,23 +86,24 @@ def _describe_image_with_vision(image_bytes: bytes) -> str:
     try:
         import base64
 
-        from langchain_ollama import ChatOllama
+        from llama_index.core.llms import ChatMessage as VisionChatMessage, MessageRole
+        from llama_index.llms.ollama import Ollama
 
-        llm = ChatOllama(
+        llm = Ollama(
             model="llava",
             base_url=config.OLLAMA_BASE_URL,
+            request_timeout=60.0,
         )
         b64 = base64.b64encode(image_bytes).decode("utf-8")
-        from langchain_core.messages import HumanMessage
-
-        message = HumanMessage(
+        message = VisionChatMessage(
+            role=MessageRole.USER,
             content=[
                 {"type": "text", "text": "Describe this figure from a research paper in detail. Include any data, labels, axes, or trends visible."},
                 {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
-            ]
+            ],
         )
-        response = llm.invoke([message])
-        return response.content.strip()
+        response = llm.chat([message])
+        return response.message.content.strip()
     except Exception as e:
         logger.warning("Vision description failed: %s", e)
         return ""

@@ -1,7 +1,4 @@
-"""Paper metadata extraction: titles, authors, and query classification.
-
-Extracted from app1.py -- these functions have no UI dependencies.
-"""
+"""Paper metadata extraction: titles, authors, and query classification."""
 
 from __future__ import annotations
 

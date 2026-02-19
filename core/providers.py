@@ -8,6 +8,7 @@ is active.
 from __future__ import annotations
 
 import logging
+import threading
 from functools import lru_cache
 
 import config
@@ -91,6 +92,7 @@ def get_embeddings(
 # LLM factory
 # ---------------------------------------------------------------------------
 _llm_cache: dict[str, object] = {}
+_llm_lock = threading.Lock()
 
 
 def get_llm(
@@ -108,56 +110,61 @@ def get_llm(
     if cache_key in _llm_cache:
         return _llm_cache[cache_key]
 
-    logger.info("Loading LLM: %s (%s, temp=%.2f)", model, provider, temperature)
+    with _llm_lock:
+        # Double-check after acquiring lock
+        if cache_key in _llm_cache:
+            return _llm_cache[cache_key]
 
-    instance = None
+        logger.info("Loading LLM: %s (%s, temp=%.2f)", model, provider, temperature)
 
-    if provider == "ollama":
-        from llama_index.llms.ollama import Ollama
+        instance = None
 
-        instance = Ollama(
-            model=model,
-            base_url=config.OLLAMA_BASE_URL,
-            temperature=temperature,
-            request_timeout=120.0,
-        )
+        if provider == "ollama":
+            from llama_index.llms.ollama import Ollama
 
-    elif provider == "openai":
-        from llama_index.llms.openai import OpenAI
+            instance = Ollama(
+                model=model,
+                base_url=config.OLLAMA_BASE_URL,
+                temperature=temperature,
+                request_timeout=120.0,
+            )
 
-        openai_kwargs: dict = {
-            "model": model,
-            "temperature": temperature,
-            "api_key": config.OPENAI_API_KEY,
-        }
-        base_url = config.OPENAI_API_BASE
-        if base_url:
-            openai_kwargs["api_base"] = base_url
-        instance = OpenAI(**openai_kwargs)
+        elif provider == "openai":
+            from llama_index.llms.openai import OpenAI
 
-    elif provider == "anthropic":
-        from llama_index.llms.anthropic import Anthropic
+            openai_kwargs: dict = {
+                "model": model,
+                "temperature": temperature,
+                "api_key": config.OPENAI_API_KEY,
+            }
+            base_url = config.OPENAI_API_BASE
+            if base_url:
+                openai_kwargs["api_base"] = base_url
+            instance = OpenAI(**openai_kwargs)
 
-        instance = Anthropic(
-            model=model,
-            temperature=temperature,
-            api_key=config.ANTHROPIC_API_KEY,
-        )
+        elif provider == "anthropic":
+            from llama_index.llms.anthropic import Anthropic
 
-    elif provider == "groq":
-        from llama_index.llms.groq import Groq
+            instance = Anthropic(
+                model=model,
+                temperature=temperature,
+                api_key=config.ANTHROPIC_API_KEY,
+            )
 
-        instance = Groq(
-            model=model,
-            temperature=temperature,
-            api_key=config.GROQ_API_KEY,
-        )
+        elif provider == "groq":
+            from llama_index.llms.groq import Groq
 
-    else:
-        raise ValueError(f"Unknown LLM provider: {provider}")
+            instance = Groq(
+                model=model,
+                temperature=temperature,
+                api_key=config.GROQ_API_KEY,
+            )
 
-    _llm_cache[cache_key] = instance
-    return instance
+        else:
+            raise ValueError(f"Unknown LLM provider: {provider}")
+
+        _llm_cache[cache_key] = instance
+        return instance
 
 
 # ---------------------------------------------------------------------------

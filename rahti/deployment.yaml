@@ -14,6 +14,8 @@ spec:
       labels:
         app: evil-ai-rag
     spec:
+      securityContext:
+        runAsNonRoot: true
       containers:
         - name: api
           image: image-registry.apps.2.rahti.csc.fi/evil-ai-chatbot/evil-ai-rag-api:latest
