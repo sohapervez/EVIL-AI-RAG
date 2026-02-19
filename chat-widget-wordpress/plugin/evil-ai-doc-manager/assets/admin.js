@@ -63,7 +63,6 @@ jQuery( document ).ready( function( $ ) {
             url: evil_ai_admin.api_url + '/api/v1/papers',
             type: 'GET',
             headers: {
-                'Authorization': 'Bearer ' + evil_ai_admin.api_key,
                 'Accept': 'application/json'
             },
             timeout: 30000,

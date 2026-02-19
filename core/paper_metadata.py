@@ -363,6 +363,38 @@ def extract_authors_from_content(content: str) -> str:
     return ""
 
 
+def extract_paper_list() -> list[dict]:
+    """Return structured paper metadata as a list of dicts.
+
+    Each dict has keys: number, title, filename, authors, indexed.
+    Used by the API for the WordPress plugin.
+    """
+    paper_info = extract_paper_titles()
+    papers = []
+    for line in paper_info.split("\n"):
+        if not line.strip():
+            continue
+        if "[FAILED TO INDEX]" in line:
+            m = re.search(r'\(file:\s+([^)]+)\)', line)
+            if m:
+                papers.append({
+                    "title": "[FAILED TO INDEX]",
+                    "filename": m.group(1),
+                    "authors": "",
+                    "indexed": False,
+                })
+            continue
+        m = re.search(r'(\d+)\.\s+"([^"]+)"\s+\(file:\s+([^)]+)\)(?:\s+\[Authors:\s+([^\]]*)\])?', line)
+        if m:
+            papers.append({
+                "title": m.group(2),
+                "filename": m.group(3),
+                "authors": m.group(4) or "",
+                "indexed": True,
+            })
+    return papers
+
+
 def enhance_query_with_paper_info(query: str, paper_info: str) -> tuple[str, bool]:
     """Enhance query by mapping paper numbers to actual paper titles/filenames.
 

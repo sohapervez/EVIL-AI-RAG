@@ -39,6 +39,7 @@ import config
 from core.analytics import AnalyticsLogger
 from core.paper_metadata import (
     enhance_query_with_paper_info,
+    extract_paper_list,
     extract_paper_titles,
     is_general_question,
     is_paper_specific_question,
@@ -217,8 +218,7 @@ async def health():
 
 @app.get("/api/v1/papers")
 async def list_papers():
-    paper_info = extract_paper_titles()
-    return {"papers": paper_info}
+    return {"papers": extract_paper_list()}
 
 
 # ---------------------------------------------------------------------------
