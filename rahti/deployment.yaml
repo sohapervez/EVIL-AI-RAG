@@ -70,12 +70,12 @@ spec:
             - name: IS_PERSISTENT
               value: "TRUE"
             - name: PERSIST_DIRECTORY
-              value: "/chroma/chroma"
+              value: "/chroma-data"
             - name: ANONYMIZED_TELEMETRY
               value: "FALSE"
           volumeMounts:
             - name: chromadb-data
-              mountPath: /chroma/chroma
+              mountPath: /chroma-data
           livenessProbe:
             httpGet:
               path: /api/v1/heartbeat
