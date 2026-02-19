@@ -4,6 +4,8 @@ metadata:
   name: evil-ai-rag
   labels:
     app: evil-ai-rag
+  annotations:
+    haproxy.router.openshift.io/timeout: 300s
 spec:
   host: evil-ai-rag.rahtiapp.fi
   tls:
