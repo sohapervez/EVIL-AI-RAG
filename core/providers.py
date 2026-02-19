@@ -130,17 +130,28 @@ def get_llm(
             )
 
         elif provider == "openai":
-            from llama_index.llms.openai import OpenAI
-
-            openai_kwargs: dict = {
-                "model": model,
-                "temperature": temperature,
-                "api_key": config.OPENAI_API_KEY,
-            }
             base_url = config.OPENAI_API_BASE
             if base_url:
-                openai_kwargs["api_base"] = base_url
-            instance = OpenAI(**openai_kwargs)
+                # Custom OpenAI-compatible endpoint (e.g. Ollama, vLLM, GPT-Lab)
+                # Use OpenAILike which doesn't validate model names
+                from llama_index.llms.openai_like import OpenAILike
+
+                instance = OpenAILike(
+                    model=model,
+                    api_base=base_url,
+                    api_key=config.OPENAI_API_KEY,
+                    temperature=temperature,
+                    is_chat_model=True,
+                    context_window=4096,
+                )
+            else:
+                from llama_index.llms.openai import OpenAI
+
+                instance = OpenAI(
+                    model=model,
+                    temperature=temperature,
+                    api_key=config.OPENAI_API_KEY,
+                )
 
         elif provider == "anthropic":
             from llama_index.llms.anthropic import Anthropic
