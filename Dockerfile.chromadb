@@ -1,15 +1,17 @@
-FROM chromadb/chroma:0.5.23
+FROM chromadb/chroma:1.5.0
 
 USER 0
 
-RUN chgrp -R 0 /chroma && \
-    chmod -R g=u /chroma && \
-    mkdir -p /chroma/chroma && \
-    chgrp -R 0 /chroma/chroma && \
-    chmod -R g=u /chroma/chroma
+# Create data directory with OpenShift-compatible permissions
+RUN mkdir -p /data && \
+    chgrp -R 0 /data && \
+    chmod -R g=u /data
 
-RUN CHROMA_PKG=$(python -c "import chromadb; import os; print(os.path.dirname(chromadb.__file__))") && \
-    chgrp -R 0 "$CHROMA_PKG" && \
-    chmod -R g=u "$CHROMA_PKG"
+# Write config that binds to all interfaces
+RUN echo 'persist_path: "/data"' > /config.yaml && \
+    chgrp 0 /config.yaml && \
+    chmod g=u /config.yaml
 
 USER 1000
+
+CMD ["run", "--host", "0.0.0.0", "--port", "8000", "/config.yaml"]
