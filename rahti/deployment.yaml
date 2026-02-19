@@ -17,6 +17,7 @@ spec:
       containers:
         - name: api
           image: image-registry.apps.2.rahti.csc.fi/evil-ai-chatbot/evil-ai-rag-api:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
           envFrom:
@@ -64,6 +65,7 @@ spec:
 
         - name: chromadb
           image: image-registry.apps.2.rahti.csc.fi/evil-ai-chatbot/evil-ai-chromadb:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           volumeMounts:
