@@ -7,11 +7,6 @@ RUN mkdir -p /data && \
     chgrp -R 0 /data && \
     chmod -R g=u /data
 
-# Write config that binds to all interfaces
-RUN echo 'persist_path: "/data"' > /config.yaml && \
-    chgrp 0 /config.yaml && \
-    chmod g=u /config.yaml
-
 USER 1000
 
-CMD ["run", "--host", "0.0.0.0", "--port", "8000", "/config.yaml"]
+CMD ["run", "--path", "/data", "--host", "0.0.0.0", "--port", "8000"]
